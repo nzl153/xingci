@@ -20,6 +20,7 @@
   <button id="bAdd"  title="加词（A）">加词</button>
   <button id="bBook" title="词书">词书</button>
   <button id="bText" title="文章">文章</button>
+  <button id="bLog"  title="按天回看、错词本、这一周">记录</button>
   <button id="bView" title="摊开成词树（T）">词树</button>
   <button id="bSet"  title="设置">⚙</button>
 </div>
@@ -59,6 +60,7 @@
     <div class="cn" id="cn"></div>
     <div class="ex" id="ex"></div>
     <div class="dv" id="dv"></div>
+    <div class="tl" id="tl"></div>
   </div>
 
   <div id="wrap">
@@ -124,6 +126,12 @@
         <ul id="tList"></ul>
       </section>
 
+      <section data-p="log">
+        <div class="acts" id="lTabs"><button data-t="day">按天</button><button data-t="bad">错词本</button><button data-t="week">这一周</button></div>
+        <div id="lBody"></div>
+        <p class="hint warn" id="lWarn">⚠ 最近一次写记录失败了，存储可能满了或被禁用。</p>
+      </section>
+
       <section data-p="set">
         <div class="row"><label>发音</label>
           <select id="sAccent">
@@ -177,5 +185,6 @@
 <script src="sky.js"></script>
 <script src="core.js"></script>
 <script src="app.js"></script>
+<script src="record.js"></script>
 </body>
 </html>

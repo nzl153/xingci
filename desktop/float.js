@@ -12,13 +12,14 @@ const IDX = new Map(ROWS.map((r, i) => [r[0], i]));
 const HKEY = 'xingci.float.hist';
 const MEANING_DELAY = 4000;
 const LEAVE = 180;
+const AFTER_GOOD = 800;            // 点「记得」后停这么久（看星星跳一下、听那一声）再换下一个
 
 let interval = 60, on = true, autoSay = false, volume = 0.75;
 let hist = [];
 try { hist = JSON.parse(XC.store.get(HKEY)) || []; } catch { hist = []; }
 let pos = hist.length - 1;
 let hovering = false;
-let tickT = 0, meanT = 0, swapT = 0;
+let tickT = 0, meanT = 0, swapT = 0, goodT = 0;
 const graded = new Map();          // 第几次弹出 -> 评了什么，同一次出现只记一次
 let base = 0;                      // 历史被截掉的条数，让 base + pos 在截断后仍然指向同一次弹出
 
@@ -59,7 +60,7 @@ function render(isNew) {
   $('pos').textContent = pos < hist.length - 1 ? `${pos + 1} / ${hist.length}` : '';
   $('prev').disabled = pos <= 0;
   gradeUI();
-  clearTimeout(meanT); clearTimeout(swapT);
+  clearTimeout(meanT); clearTimeout(swapT); clearTimeout(goodT);
 
   const apply = () => {
     const e = ROWS[IDX.get(w)];
@@ -133,6 +134,8 @@ function grade(g) {
     if (rec) rec.msg = lv === null ? '没记上' : g === 2 ? (lv > lv0 ? `L${lv0}→L${lv}` : `L${lv}`) : '归零';
     if (hist[pos] === w) { gradeUI(); $('star').style.color = levelColor(lv); }
   }, 400);
+  // 记得就直接换下一个；忘了停在这，多看一会儿释义
+  if (g === 2) goodT = setTimeout(() => { if (hist[pos] === w) $('next').click(); }, AFTER_GOOD);
 }
 
 function fresh() {
@@ -142,6 +145,7 @@ function fresh() {
   if (hist.length > 60) { base += hist.length - 60; hist = hist.slice(-60); }
   pos = hist.length - 1;
   try { XC.store.set(HKEY, JSON.stringify(hist)); } catch { /* 存不了就只留在内存里 */ }
+  api.shown(w);
   render(true);
 }
 

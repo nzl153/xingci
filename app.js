@@ -102,6 +102,7 @@ function light(words, lv) {
     inSky.add(w);
     S.sky.push({ w, t });
     if (lv && !S.prog[w]) S.prog[w] = { lv, n: 0, bad: 0, last: 0 };
+    logEv(w, lv === 3 ? 'K' : 'L');
     n++;
   }
   if (n) refreshSky();
@@ -191,7 +192,24 @@ function startRound() {
   next();
 }
 
+/* 复查：按给定的词表走一遍，不带新词，走完就收 */
+function reviewRound(words, label) {
+  const q = words.filter(w => inSky.has(w));
+  if (!q.length) { toast('这里没有可以复查的词。'); return; }
+  closePanel();
+  $('empty').classList.remove('on');
+  sess = { n: 0, g: [0, 0, 0], words: [], shown: new Set(), newLeft: 0, queue: q, max: q.length, label };
+  next();
+}
+
 function next() {
+  if (sess.queue) {
+    const w = sess.queue.shift();
+    if (!w) { wrapUp(); return; }
+    sess.shown.add(w);
+    show(w, false);
+    return;
+  }
   const slots = ROUND - sess.n;
   let w = null, isNew = false;
   // 新词均匀插在一轮里，不要全堆在开头
@@ -226,6 +244,7 @@ function show(w, isNew) {
   $('cn').innerHTML = e ? e[2].split('\n').map(esc).join('<br>') : '';
   renderEx(w);
   renderFam(w);
+  renderTL(w);
   XC.prefetch(w, S.accent);
   // 一轮里接着换词时，新词轻轻滑进来，不是一下子跳过去
   if (card.classList.contains('on')) {
@@ -238,7 +257,7 @@ function show(w, isNew) {
   if (revealed) card.classList.add('reveal');
   card.classList.add('on');
   $('round').textContent = sess.n >= 0 && sess.words
-    ? `本轮 ${sess.n + 1} / ${ROUND}　·　今天 ${todayN()}` : '';
+    ? `${sess.label || '本轮'} ${sess.n + 1} / ${sess.max || ROUND}　·　今天 ${todayN()}` : '';
   Sky.pause(true);
   if (isNew && !Sky.has(w)) Sky.focusNewest(1.5); else Sky.focus(w, isNew ? 1.5 : 1.75);
 }
@@ -303,6 +322,7 @@ function grade(g) {
   const w = cur.w;
   const lv0 = lvOf(w);
   touch(w, g);
+  logEv(w, g);
   XC.sfx(['bad', 'mid', 'good'][g], S.sfx);
   if ($('card').classList.contains('solo')) toast(gradeMsg(w, lv0));
   else fx(g, lvShift(w, lv0));
@@ -358,7 +378,7 @@ function after(w, g) {
   if (g >= 0) sess.g[g]++;
   sess.words.push({ w, g });
   save();
-  if (sess.n >= ROUND) wrapUp(); else next();
+  if (sess.n >= (sess.max || ROUND)) wrapUp(); else next();
 }
 
 function markKnown() {
@@ -368,6 +388,7 @@ function markKnown() {
   Object.assign(p, { lv: 5, known: true, last: Date.now() });
   p.n++;
   S.prog[w] = p;
+  logEv(w, 'X');
   XC.sfx('good', S.sfx);
   fx(2, '不再抽');
   after(w, 2);
@@ -376,7 +397,7 @@ function markKnown() {
 function wrapUp() {
   const [bad, mid, good] = sess.g;
   const lit = sess.words.filter(x => x.g === -1).length;
-  $('rtitle').textContent = `这一轮 ${sess.n} 个 · 今天累计 ${todayN()} 个`;
+  $('rtitle').textContent = `${sess.label ? sess.label + '：' : '这一轮 '}${sess.n} 个 · 今天累计 ${todayN()} 个`;
   $('rnums').innerHTML =
     `<i>记得</i><b class="g">${good}</b>&nbsp;&nbsp;<i>模糊</i><b class="m">${mid}</b>&nbsp;&nbsp;` +
     `<i>忘了</i><b class="b">${bad}</b>` + (lit ? `&nbsp;&nbsp;<i>新点亮</i><b class="n">${lit}</b>` : '');
@@ -409,7 +430,7 @@ function say(w) {
 
 /* ---------------- 面板 ---------------- */
 
-const PANELS = { add: '加词', book: '词书', text: '文章', set: '设置' };
+const PANELS = { add: '加词', book: '词书', text: '文章', log: '记录', set: '设置' };
 let openP = null;
 function openPanel(p) {
   if (openP === p) { closePanel(); return; }
@@ -421,6 +442,7 @@ function openPanel(p) {
   if (p === 'book') renderBooks();
   if (p === 'text') renderTexts();
   if (p === 'set') renderSet();
+  if (p === 'log') renderLog();
 }
 function closePanel() { openP = null; $('panel').classList.remove('on'); }
 
@@ -753,7 +775,7 @@ $('popLight').onclick = () => {
 $('popCard').onclick = () => { const w = popW; hidePop(); if (w) peek(w); };
 
 $('sExp').onclick = () => {
-  const blob = new Blob([JSON.stringify({ app: 'xingci', ...S, texts: TEXTS }, null, 1)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'xingci', ...S, texts: TEXTS, log: LOG }, null, 1)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `xingci-${today()}.json`;
@@ -768,10 +790,13 @@ $('sFile').onchange = async () => {
     const d = JSON.parse(await f.text());
     if (d.app !== 'xingci' || !Array.isArray(d.sky)) throw new Error('不是星词的备份文件');
     const texts = d.texts || [];
-    delete d.app; delete d.texts;
+    const log = d.log && Array.isArray(d.log.ev) ? d.log : null;
+    delete d.app; delete d.texts; delete d.log;
     S = Object.assign(blank(), d);
     TEXTS = texts;
-    save(); saveTexts();
+    // 老备份里没有记录，就照新进度补一份
+    LOG = log ? { v: 1, ev: log.ev, shows: log.shows || {} } : backfill();
+    save(); saveTexts(); saveLog();
     inSky.clear(); S.sky.forEach(x => inSky.add(x.w));
     indexTexts(); refreshSky();
     toast(`导入了 ${S.sky.length} 颗星`);
@@ -792,8 +817,8 @@ $('sSfx').onchange = () => { save(); XC.sfx('good', S.sfx); };
 $('sReset').onclick = () => {
   const b = $('sReset');
   if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = '真的清空？再点一次'; return; }
-  S = blank(); TEXTS = [];
-  save(); saveTexts();
+  S = blank(); TEXTS = []; LOG = { v: 1, ev: [], shows: {} };
+  save(); saveTexts(); saveLog();
   inSky.clear(); indexTexts(); refreshSky();
   b.dataset.sure = ''; b.textContent = '清空星空和进度';
   closePanel(); renderEmpty();
@@ -851,10 +876,12 @@ if (window.xingciDesktop) {
     stop();
     peek(w);
   });
+  window.xingciDesktop.onShown(() => logShown());     // record.js 在后面才加载，等用到时再找它
   // 浮窗上点的「记得/忘了」，跟卡片上评分走同一套规则
   window.xingciDesktop.onGrade((w, g) => {
     if (!inSky.has(w)) return;
     touch(w, g);
+    logEv(w, g, 'f');
     Sky.setBright(w, bright(w), 1.2);
     bumpToday();
     save();

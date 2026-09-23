@@ -58,7 +58,10 @@ const FILES = {
   'xingci.v1': 'progress.json',
   'xingci.texts.v1': 'texts.json',
   'xingci.float.hist': 'float-history.json',
+  'xingci.log.v1': 'history.json',
 };
+// 记录一条一条往上加，会越来越长；缩进写出来体积翻好几倍，就不排版了
+const COMPACT = new Set(['xingci.log.v1']);
 
 ipcMain.on('store:get', (e, key) => {
   const f = FILES[key] && path.join(SAVE, FILES[key]);
@@ -78,11 +81,23 @@ ipcMain.on('store:set', (e, key, val) => {
   try {
     fs.mkdirSync(SAVE, { recursive: true });
     // 先写临时文件再改名，写到一半断电也不会留下半截文件；上一版留成 .bak
-    fs.writeFileSync(f + '.tmp', JSON.stringify(JSON.parse(val), null, 1));
+    fs.writeFileSync(f + '.tmp', COMPACT.has(key) ? val : JSON.stringify(JSON.parse(val), null, 1));
     if (fs.existsSync(f)) fs.copyFileSync(f, f + '.bak');
     fs.renameSync(f + '.tmp', f);
     e.returnValue = true;
   } catch { e.returnValue = false; }
+});
+
+/* ---------- 导出：写进数据目录的 exports/，然后在文件夹里选中它 ---------- */
+
+ipcMain.handle('export:write', (_e, name, text) => {
+  if (!/^[\w一-鿿 .-]{1,80}\.(md|json)$/.test(name) || typeof text !== 'string') return null;
+  const dir = path.join(DATA, 'exports');
+  const f = path.join(dir, name);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(f, text);
+  if (!process.env.XINGCI_SELFTEST) shell.showItemInFolder(f);
+  return f;
 });
 
 /* ---------- 发音缓存：每个词只下载一次，存在 cache/audio 下 ---------- */
@@ -225,6 +240,8 @@ ipcMain.on('float:open', (_e, w) => {
 ipcMain.on('float:off', () => { snoozed = true; applyFloat(); });
 // 进度只让主窗口写：它内存里有一份，浮窗直接写文件会被它下次保存盖掉
 ipcMain.on('float:grade', (_e, w, g) => { if (win) win.webContents.send('grade', w, g); });
+// 浮窗弹过几个词也记一笔，但只是「展示过」，不算进度
+ipcMain.on('float:shown', (_e, w) => { if (win) win.webContents.send('shown', w); });
 ipcMain.on('float:away', e => {
   e.returnValue = cfg.afkPause && (powerMonitor.getSystemIdleTime() >= AFK ||
                                    powerMonitor.getSystemIdleState(AFK) === 'locked');

@@ -7,6 +7,13 @@ const path = require('path');
 const electron = require('electron');
 
 const out = fs.mkdtempSync(path.join(os.tmpdir(), 'xingci-selftest-'));
+// 先放一份「有记录功能以前」的旧存档：昨天点亮、复习过，但没有 history.json
+const yday = Date.now() - 864e5;
+fs.mkdirSync(path.join(out, 'save'));
+fs.writeFileSync(path.join(out, 'save', 'progress.json'), JSON.stringify({
+  v: 1, sky: [{ w: 'zebra', t: yday }], prog: { zebra: { lv: 2, n: 3, bad: 1, last: yday + 6e5 } },
+  book: 'ky3000', newN: 2, today: null, accent: 'us',
+}));
 const p = spawn(electron, [__dirname], { env: { ...process.env, XINGCI_SELFTEST: out }, stdio: 'inherit' });
 const timer = setTimeout(() => p.kill(), 90e3);
 

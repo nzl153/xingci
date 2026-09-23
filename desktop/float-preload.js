@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('floatApi', {
   interval: s => ipcRenderer.send('float:interval', s),
   autoSay: v => ipcRenderer.send('float:autosay', v),
   volume: v => ipcRenderer.send('float:volume', v),
+  shown: w => ipcRenderer.send('float:shown', w),
   store: {
     get: key => ipcRenderer.sendSync('store:get', key),
     set: (key, val) => ipcRenderer.sendSync('store:set', key, val),

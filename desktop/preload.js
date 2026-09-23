@@ -4,6 +4,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('xingciDesktop', {
   onOpenWord: cb => ipcRenderer.on('open-word', (_e, w) => cb(w)),
   onGrade: cb => ipcRenderer.on('grade', (_e, w, g) => cb(w, g)),
+  onShown: cb => ipcRenderer.on('shown', (_e, w) => cb(w)),
+  exportFile: (name, text) => ipcRenderer.invoke('export:write', name, text),
   audio: (w, accent) => ipcRenderer.invoke('audio:get', w, accent),
   store: {
     get: key => ipcRenderer.sendSync('store:get', key),

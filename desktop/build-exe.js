@@ -10,7 +10,7 @@ const STAGE = path.join(__dirname, '.stage');
 const pkg = require('./package.json');
 
 const FILES = [
-  'index.html', 'style.css', 'app.js', 'core.js', 'sky.js', 'icon.ico', 'icon.svg', 'LICENSE',
+  'index.html', 'style.css', 'app.js', 'core.js', 'sky.js', 'record.js', 'icon.ico', 'icon.svg', 'LICENSE',
   'data/dict.js', 'data/books.js',
   'desktop/main.js', 'desktop/preload.js', 'desktop/float-preload.js', 'desktop/float.html', 'desktop/float.js',
 ];
