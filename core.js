@@ -2,7 +2,7 @@
 'use strict';
 
 const XC = (() => {
-  const VERSION = '1.0.0';
+  const VERSION = '1.0.1';
 
   /* ---------- 存档 ----------
    * 桌面版存到 save/ 下的文件里，网页版只能用浏览器存储。

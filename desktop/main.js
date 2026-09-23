@@ -195,6 +195,11 @@ function makeFloat() {
   float.loadFile(path.join(__dirname, 'float.html'));
   lockDown(float);
   float.once('ready-to-show', () => { if (floatOn()) float.showInactive(); sendCfg(); });
+  // Windows 上置顶会被别的程序冲掉（有人开 Edge 时碰到过），掉下去以后自己回不来，胶囊就一直躲在浏览器后面。
+  // 隔几秒重新声明一次
+  setInterval(() => {
+    if (float && float.isVisible()) float.setAlwaysOnTop(true, 'screen-saver');
+  }, 3000);
 }
 
 // 托盘里的开关会记住；浮窗上的 × 只关到下次启动，免得点过一次就再也不出来

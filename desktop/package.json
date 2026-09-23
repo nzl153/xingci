@@ -1,7 +1,7 @@
 {
   "name": "xingci-desktop",
   "productName": "星词",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "星词桌面版：网页本体 + 托盘 + 置顶弹词浮窗",
   "author": "nzl153",
