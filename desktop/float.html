@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<!-- 只加载本地文件；唯一的外部请求是有道的发音 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data:; media-src 'self' file: https://dict.youdao.com; connect-src 'none'; object-src 'none'">
+<title>星词浮窗</title>
+<style>
+  :root {
+    --ink: #f2ece3; --dim: #8a8078; --blue: #6d93b5; --clay: #d97757; --clay-hi: #e8896a; --sea: #5b86b0; --sea-hi: #6f98c0;
+    --ease: cubic-bezier(.22, 1, .36, 1);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: system-ui, "Microsoft YaHei", "微软雅黑", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: transparent; overflow: hidden; height: 100%; user-select: none; }
+  body { display: flex; align-items: flex-end; justify-content: flex-end; padding: 12px 12px 52px; font-family: var(--sans); }
+
+  #cap {
+    position: relative; max-width: 330px; min-width: 230px;
+    padding: 12px 24px 13px 20px; border-radius: 999px;
+    background: rgba(24,20,17,.93); border: 1px solid rgba(242,236,227,.12);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+    color: var(--ink); cursor: grab;
+    transition: opacity .5s var(--ease), transform .55s var(--ease), width .45s var(--ease);
+  }
+  #cap.hide { display: none; }
+  #cap.enter { opacity: 0; transform: translateY(12px) scale(.94); }
+  #cap.leave { opacity: 0; transform: translateY(-5px) scale(.98); transition-duration: .18s; }
+  #inner { overflow: hidden; }
+
+  .top { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+  #star { font-size: 12px; transform: translateY(-2px); transition: color .6s; }
+  #word { font: 600 22px/1.2 var(--serif); letter-spacing: -.005em; }
+  #ipa { color: var(--blue); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  #say {
+    flex: none; align-self: center; margin-left: auto; width: 26px; height: 26px; border-radius: 999px;
+    border: 0; background: transparent; cursor: pointer; font-size: 13px; line-height: 1;
+    opacity: .55; filter: grayscale(1); transition: opacity .2s, background .2s, transform .15s var(--ease);
+  }
+  #say:hover { opacity: 1; filter: none; background: rgba(217,119,87,.18); }
+  #say:active { transform: scale(.88); }
+
+  /* 释义用 grid 0fr→1fr 展开，比 max-height 顺滑，也不用猜高度 */
+  #cnw { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s var(--ease); }
+  #cn {
+    min-height: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    font-size: 13px; line-height: 1.5; color: rgba(242,236,227,.82);
+    opacity: 0; transform: translateY(-4px);
+    transition: opacity .4s ease .08s, transform .5s var(--ease) .08s;
+  }
+  #cap.meaning #cnw { grid-template-rows: 1fr; }
+  #cap.meaning #cn { opacity: 1; transform: none; padding-top: 3px; }
+
+  /* 控制钮：鼠标移上来才出现。
+     离胶囊有一段空隙，用 padding 垫住，鼠标从胶囊挪上去的路上不会断掉 hover */
+  #ctl {
+    position: absolute; bottom: 100%; right: 18px; padding-bottom: 8px;
+    display: flex; gap: 6px; align-items: center; width: max-content; white-space: nowrap;
+    opacity: 0; transform: translateY(6px); pointer-events: none;
+    transition: opacity .2s ease, transform .35s var(--ease);
+  }
+  #cap:hover #ctl { opacity: 1; transform: none; pointer-events: auto; }
+  /* 评分钮在胶囊下面，同样用 padding 垫住空隙 */
+  #grade {
+    position: absolute; top: 100%; right: 18px; padding-top: 8px;
+    display: flex; gap: 6px; width: max-content; white-space: nowrap;
+    opacity: 0; transform: translateY(-6px); pointer-events: none;
+    transition: opacity .2s ease, transform .35s var(--ease);
+  }
+  #cap:hover #grade { opacity: 1; transform: none; pointer-events: auto; }
+  #ctl button, #grade button {
+    flex: none; min-width: 32px; height: 30px; padding: 0 9px; border-radius: 999px; cursor: pointer;
+    background: var(--clay); border: 0; color: #fff;
+    font: 600 15px/1 var(--sans);
+    transition: background .2s, transform .15s var(--ease), opacity .2s;
+  }
+  #ctl button:hover { background: var(--clay-hi); }
+  #ctl button:active, #grade button:active { transform: scale(.9); }
+  #ctl button:disabled { opacity: .4; cursor: default; transform: none; background: var(--clay); }
+  #ctl #iv { font-size: 12px; }
+  /* 自动朗读：开着是橘色，关着是暗色带个叉 */
+  #ctl #auto { display: grid; place-items: center; padding: 0 8px; }
+  #ctl #auto:not(.is-on) { background: rgba(24,20,17,.93); color: rgba(242,236,227,.55); box-shadow: inset 0 0 0 1px rgba(242,236,227,.16); }
+  #ctl #auto:not(.is-on):hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--clay); }
+  #auto .on { display: none; } #auto.is-on .on { display: inline; }
+  #auto.is-on .off { display: none; }
+  #ctl #off { font-size: 14px; }
+  #grade button { background: var(--sea); font-size: 13px; padding: 0 13px; }
+  #grade button:hover { background: var(--sea-hi); }
+  #grade button:disabled { opacity: .4; cursor: default; transform: none; background: var(--sea); }
+  #grade button.done { background: rgba(24,20,17,.93); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--sea); opacity: 1; }
+  #pos { color: var(--ink); font-size: 11px; margin-right: 2px;
+         background: rgba(24,20,17,.93); border: 1px solid rgba(242,236,227,.12);
+         border-radius: 999px; padding: 4px 9px; }
+  #pos:empty { display: none; }
+</style>
+</head>
+<body>
+<div id="cap" class="hide">
+  <div id="ctl">
+    <span id="pos"></span>
+    <button id="auto" title="自动朗读：每弹一个词读一遍"><svg viewBox="0 0 16 16" width="15" height="15"><path d="M2 6h3l4-3v10L5 10H2z" fill="currentColor"/><path class="on" d="M11 5.2a4 4 0 0 1 0 5.6M12.8 3.5a6.4 6.4 0 0 1 0 9" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/><path class="off" d="M11 5.5l4 5m0-5l-4 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+    <button id="iv" title="多久换一个词，点一下切换"></button>
+    <button id="prev" class="nav" title="上一个">‹</button>
+    <button id="next" class="nav" title="下一个">›</button>
+    <button id="off" title="先关掉，下次启动还会出来（托盘里可以永久关）">×</button>
+  </div>
+  <div id="inner">
+    <div class="top"><span id="star">✦</span><span id="word"></span><span id="ipa"></span><button id="say" title="读一遍">🔊</button></div>
+    <div id="cnw"><div id="cn"></div></div>
+  </div>
+  <div id="grade">
+    <button id="good" title="记得：这颗星变亮">✓ 记得</button>
+    <button id="bad" title="忘了：这颗星变暗，之后更常出现">✗ 忘了</button>
+  </div>
+</div>
+<script src="../data/dict.js"></script>
+<script src="../core.js"></script>
+<script src="float.js"></script>
+</body>
+</html>

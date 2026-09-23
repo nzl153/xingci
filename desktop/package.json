@@ -1,0 +1,19 @@
+{
+  "name": "xingci-desktop",
+  "productName": "星词",
+  "version": "1.0.0",
+  "private": true,
+  "description": "星词桌面版：网页本体 + 托盘 + 置顶弹词浮窗",
+  "author": "nzl153",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "selftest": "node selftest-run.js",
+    "dist": "node build-exe.js"
+  },
+  "devDependencies": {
+    "electron": "44.4.4",
+    "electron-builder": "26.15.3"
+  }
+}

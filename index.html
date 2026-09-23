@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<!-- 只加载本地文件；唯一的外部请求是有道的发音 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data:; media-src 'self' file: https://dict.youdao.com; connect-src 'none'; object-src 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c0a09">
+<title>星词</title>
+<meta name="description" content="一颗由你认识的单词组成的星球。无聊时点开抽几个，没有打卡，没有任务。">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="bar">
+  <span class="t">星词</span>
+  <span class="sp"></span>
+  <button id="bDraw" class="pri" title="抽一轮（空格）">抽词</button>
+  <button id="bAdd"  title="加词（A）">加词</button>
+  <button id="bBook" title="词书">词书</button>
+  <button id="bText" title="文章">文章</button>
+  <button id="bView" title="摊开成词树（T）">词树</button>
+  <button id="bSet"  title="设置">⚙</button>
+</div>
+
+<canvas id="sky"></canvas>
+<div id="tip"></div>
+
+<div id="empty">
+  <div class="box">
+    <h1>星词</h1>
+    <p>一颗由你认识的单词组成的星球。<br>无聊时点开抽几个，没有打卡，没有任务。</p>
+    <div class="row">
+      <label>从哪本词书开始</label>
+      <select id="eBook"></select>
+    </div>
+    <div class="row">
+      <label>已经学过前几个？</label>
+      <input id="eCursor" type="number" min="0" step="50" value="0">
+      <span class="hint" id="eHint"></span>
+    </div>
+    <p class="small">填 0 就从头开始，每轮会带几个新词。学过的词会直接点亮成星星，以后随时在「词书」里改。</p>
+    <button id="eGo" class="big">点亮星空</button>
+  </div>
+</div>
+
+<div id="card">
+  <div class="meta" id="meta"></div>
+  <div class="word" id="word"></div>
+  <div class="ipa">
+    <button id="say" title="读一遍（S）">🔊</button>
+    <span id="ipa"></span>
+  </div>
+
+  <div id="veil">点一下 / 空格 &nbsp;看释义</div>
+
+  <div id="answer">
+    <div class="cn" id="cn"></div>
+    <div class="ex" id="ex"></div>
+    <div class="dv" id="dv"></div>
+  </div>
+
+  <div id="wrap">
+    <div class="rt" id="rtitle"></div>
+    <div class="rn" id="rnums"></div>
+    <div class="rw" id="rwords"></div>
+    <div class="rb">
+      <button id="again">再来一轮</button>
+      <button id="done">收工</button>
+    </div>
+  </div>
+
+  <div id="grade">
+    <button class="g" data-g="2">记得<small>1</small></button>
+    <button class="m" data-g="1">模糊<small>2</small></button>
+    <button class="b" data-g="0">忘了<small>3</small></button>
+  </div>
+
+  <div id="newact">
+    <button id="light" class="g">点亮它<small>空格</small></button>
+    <button id="knew">早就认识<small>K</small></button>
+  </div>
+
+  <div id="bottom">
+    <span id="round"></span>
+    <span class="sp"></span>
+    <button id="known" title="这个词已经很牢了，别再抽我">这个不用再抽</button>
+    <button id="stop">收工</button>
+  </div>
+</div>
+
+<!-- 面板：加词 / 词书 / 文章 / 设置，共用一个外壳 -->
+<div id="panel">
+  <div class="box">
+    <div class="hd"><b id="pTitle"></b><span class="sp"></span><button id="pClose">×</button></div>
+    <div class="bd">
+
+      <section data-p="add">
+        <input id="aq" type="text" placeholder="输入单词，回车点亮（went 会自动找到 go）" autocomplete="off" spellcheck="false">
+        <ul id="alist"></ul>
+        <details>
+          <summary>一次粘贴一整张词表</summary>
+          <textarea id="abulk" rows="6" placeholder="空格、逗号、换行分隔都行，中文释义会被忽略"></textarea>
+          <div class="acts"><span id="abulkMsg" class="hint"></span><span class="sp"></span><button id="abulkGo">全部点亮</button></div>
+        </details>
+      </section>
+
+      <section data-p="book">
+        <p class="hint">新词从「当前词书」按顺序来。填「已学到第几个」可以一次把前面的词都点亮。</p>
+        <div id="books"></div>
+        <div class="row">
+          <label>每轮带几个新词</label>
+          <input id="newN" type="range" min="0" max="5" step="1">
+          <b id="newNv"></b>
+        </div>
+      </section>
+
+      <section data-p="text">
+        <p class="hint">贴进你在读的文章，在阅读模式里点任何一个词都能查、能点亮。以后抽到文里的词，卡片上会给出原句。文章只存在这个浏览器里。</p>
+        <input id="tTitle" type="text" placeholder="标题，比如「2019 Text 2」">
+        <textarea id="tBody" rows="5" placeholder="正文"></textarea>
+        <div class="acts"><span id="tMsg" class="hint"></span><span class="sp"></span><button id="tAdd">保存并阅读</button></div>
+        <ul id="tList"></ul>
+      </section>
+
+      <section data-p="set">
+        <div class="row"><label>发音</label>
+          <select id="sAccent">
+            <option value="us">美音（在线真人）</option>
+            <option value="uk">英音（在线真人）</option>
+            <option value="sys">只用系统语音</option>
+          </select>
+        </div>
+        <p class="hint">在线发音来自有道，要联网；没网时自动改用系统语音。有些中文 Windows 没装英文语音，那就只能靠在线的。</p>
+        <div class="row"><label>备份进度</label><button id="sExp">导出 JSON</button><button id="sImp">导入</button><input id="sFile" type="file" accept=".json,application/json" hidden></div>
+        <p class="hint" id="sWhere">进度只存在这个浏览器里。换电脑、清缓存之前记得导出。</p>
+        <div class="row"><label>从头再来</label><button id="sReset" class="danger">清空星空和进度</button></div>
+        <p class="hint" id="sAbout"></p>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<div id="reader">
+  <div class="rhd">
+    <div class="rti"><b id="rTitle"></b><span id="rStat"></span></div>
+    <span class="sp"></span>
+    <button id="rAll" title="把文中当前词书里还没点亮的词全部点亮"></button>
+    <button id="rClose" title="关闭（Esc）">×</button>
+  </div>
+  <div class="legend"><span class="lit">已点亮</span><span class="todo">词书里还没点亮</span><span class="dict">其他词</span>　点任何一个词查释义</div>
+  <article id="rBody"></article>
+</div>
+
+<div id="pop">
+  <div class="ph"><b id="popW"></b><span id="popF"></span><button id="popSay" title="读一遍">🔊</button></div>
+  <div class="pi" id="popIpa"></div>
+  <div class="pc" id="popCn"></div>
+  <div class="pa"><span id="popSt"></span><span class="sp"></span><button id="popCard">看卡片</button><button id="popLight">点亮</button></div>
+</div>
+
+<div id="foot">
+  <span id="stat"></span>
+  <span class="sp"></span>
+  <span class="keys"><i class="key">空格</i> 抽词/看释义 <i class="key">1 2 3</i> 记得/模糊/忘了 <i class="key">S</i> 发音 <i class="key">A</i> 加词 <i class="key">T</i> 星球/词树 <i class="key">Esc</i> 收工</span>
+</div>
+
+<div id="loading">正在展开星图…</div>
+
+<script src="data/dict.js"></script>
+<script src="data/books.js"></script>
+<script src="sky.js"></script>
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

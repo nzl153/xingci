@@ -1,0 +1,7 @@
+tools/raw/
+__pycache__/
+desktop/node_modules/
+save/
+cache/
+desktop/.stage/
+desktop/release/
