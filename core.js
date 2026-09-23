@@ -1,4 +1,4 @@
-/* 星词 · 主窗口和浮窗共用的部分：存档、抽词权重、释义截短、发音 */
+/* 星词 · 主窗口和浮窗共用的部分：存档、抽词权重、释义截短、发音、音效 */
 'use strict';
 
 const XC = (() => {
@@ -114,32 +114,72 @@ const XC = (() => {
   }
   if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 
-  function sysSay(w) {
+  function sysSay(w, vol) {
     if (!sysVoice) return false;
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(w);
-    u.voice = sysVoice; u.lang = sysVoice.lang; u.rate = 0.9;
+    u.voice = sysVoice; u.lang = sysVoice.lang; u.rate = 0.9; u.volume = vol;
     speechSynthesis.speak(u);
     return true;
   }
 
+  const clamp = v => Math.max(0, Math.min(1, +v || 0));
   let playing = null;
   /* 返回 Promise<boolean>：到底有没有读出来 */
-  function say(w, accent = 'us') {
+  function say(w, accent = 'us', vol = 1) {
     if (!w) return Promise.resolve(false);
+    vol = clamp(vol);
     if (playing) { playing.pause(); playing = null; }
     if ('speechSynthesis' in window) speechSynthesis.cancel();
-    if (accent === 'sys') return Promise.resolve(sysSay(w));
+    if (accent === 'sys') return Promise.resolve(sysSay(w, vol));
     return load(w, accent).then(a => {
-      if (!a) return sysSay(w);
+      if (!a) return sysSay(w, vol);
       a.currentTime = 0;
+      a.volume = vol;
       playing = a;
       return a.play().then(() => true, () => {
         cache.delete(accent + ':' + w);    // 坏掉的别留着，下次重新拉
-        return sysSay(w);
+        return sysSay(w, vol);
       });
     });
   }
 
-  return { VERSION, store, pick, brief, say, prefetch, hasSysVoice: () => !!sysVoice };
+  /* ---------- 评分音效 ----------
+   * 现场合成的几声轻响，不带音频文件，离线也有。
+   * 每个音是正弦加一点高八度泛音，快起慢收，听着像敲了一下小铃 */
+  const SFX = {
+    good:  [[0, 880], [0.075, 1318.5]],                  // 往上走：记得
+    mid:   [[0, 784]],                                   // 一声：模糊
+    bad:   [[0, 392], [0.09, 311.1]],                    // 往下走、低一些：忘了
+    light: [[0, 659.3], [0.055, 987.8], [0.11, 1318.5]], // 三个音：点亮新词
+  };
+  let ac = null;
+  function sfx(kind, vol = 0.5) {
+    vol = clamp(vol);
+    const notes = SFX[kind];
+    if (!notes || !vol) return false;
+    try {
+      ac = ac || new AudioContext();
+      if (ac.state === 'suspended') ac.resume();
+      const t0 = ac.currentTime + 0.01;
+      const peak = (kind === 'bad' ? 0.16 : 0.12) * vol;
+      for (const [dt, f] of notes) {
+        for (const [mul, g, len] of [[1, 1, 0.7], [2, 0.18, 0.3]]) {
+          const o = ac.createOscillator(), v = ac.createGain();
+          const t = t0 + dt;
+          o.type = 'sine';
+          o.frequency.value = f * mul;
+          v.gain.setValueAtTime(0, t);
+          v.gain.linearRampToValueAtTime(peak * g, t + 0.008);
+          v.gain.exponentialRampToValueAtTime(0.0001, t + len);
+          o.connect(v).connect(ac.destination);
+          o.start(t);
+          o.stop(t + len + 0.05);
+        }
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  return { VERSION, store, pick, brief, say, sfx, prefetch, hasSysVoice: () => !!sysVoice };
 })();

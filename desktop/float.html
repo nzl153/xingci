@@ -86,6 +86,16 @@
   #auto .on { display: none; } #auto.is-on .on { display: inline; }
   #auto.is-on .off { display: none; }
   #ctl #off { font-size: 14px; }
+  /* 音量：几道声波表示几档 */
+  #ctl #vol { display: flex; align-items: center; gap: 3px; padding: 0 9px 0 8px; font-size: 11px; font-variant-numeric: tabular-nums; }
+  #vol path[class^="w"] { transition: opacity .2s; }
+  #vol[data-lv="0"] .w2, #vol[data-lv="0"] .w3, #vol[data-lv="1"] .w3 { opacity: .25; }
+  #vol[data-lv="0"] .w1 { opacity: .6; }
+  /* 评分后星星跳一下：记得往上亮，忘了往下沉 */
+  #star.pop  { animation: pop .6s cubic-bezier(.22,1,.36,1); }
+  #star.sink { animation: sink .6s cubic-bezier(.22,1,.36,1); }
+  @keyframes pop  { 35% { transform: translateY(-2px) scale(1.7); text-shadow: 0 0 10px currentColor; } }
+  @keyframes sink { 35% { transform: translateY(1px) scale(.7); opacity: .5; } }
   #grade button { background: var(--sea); font-size: 13px; padding: 0 13px; }
   #grade button:hover { background: var(--sea-hi); }
   #grade button:disabled { opacity: .4; cursor: default; transform: none; background: var(--sea); }
@@ -101,6 +111,7 @@
   <div id="ctl">
     <span id="pos"></span>
     <button id="auto" title="自动朗读：每弹一个词读一遍"><svg viewBox="0 0 16 16" width="15" height="15"><path d="M2 6h3l4-3v10L5 10H2z" fill="currentColor"/><path class="on" d="M11 5.2a4 4 0 0 1 0 5.6M12.8 3.5a6.4 6.4 0 0 1 0 9" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/><path class="off" d="M11 5.5l4 5m0-5l-4 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+    <button id="vol" title="浮窗音量"><svg viewBox="0 0 16 16" width="15" height="15"><path d="M2 6h3l4-3v10L5 10H2z" fill="currentColor"/><path class="w1" d="M11 6.3a2.5 2.5 0 0 1 0 3.4" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/><path class="w2" d="M12.4 4.6a5 5 0 0 1 0 6.8" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/><path class="w3" d="M13.8 3a7.4 7.4 0 0 1 0 10" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg><span id="volN"></span></button>
     <button id="iv" title="多久换一个词，点一下切换"></button>
     <button id="prev" class="nav" title="上一个">‹</button>
     <button id="next" class="nav" title="下一个">›</button>

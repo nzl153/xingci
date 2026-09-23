@@ -133,6 +133,9 @@
           </select>
         </div>
         <p class="hint">在线发音来自有道，要联网；没网时自动改用系统语音。有些中文 Windows 没装英文语音，那就只能靠在线的。</p>
+        <div class="row"><label>朗读音量</label><input id="sVol" type="range" min="0" max="100" step="5"><span id="sVolN" class="vn"></span></div>
+        <div class="row"><label>评分音效</label><input id="sSfx" type="range" min="0" max="100" step="5"><span id="sSfxN" class="vn"></span></div>
+        <p class="hint">评分、点亮新词时的一声轻响，拉到最左就关掉。桌面浮窗的音量在胶囊上单独调。</p>
         <div class="row"><label>备份进度</label><button id="sExp">导出 JSON</button><button id="sImp">导入</button><input id="sFile" type="file" accept=".json,application/json" hidden></div>
         <p class="hint" id="sWhere">进度只存在这个浏览器里。换电脑、清缓存之前记得导出。</p>
         <div class="row"><label>从头再来</label><button id="sReset" class="danger">清空星空和进度</button></div>

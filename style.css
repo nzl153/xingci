@@ -121,6 +121,41 @@ button { font-family: inherit; }
 #newact #knew:hover { border-color: var(--blue); background: rgba(109,147,181,.18); }
 #newact .g { border-color: rgba(109,156,115,.5); }
 
+/* 评分反馈：边上亮一圈、上方飘一个等级变化 */
+#card.fx-good { --fx: 109,156,115; }
+#card.fx-mid  { --fx: 217,164,65; }
+#card.fx-bad  { --fx: 192,95,60; }
+#card.fx-lit  { --fx: 217,164,65; }
+#card[class*="fx-"] { animation: fxRing .7s ease-out; }
+@keyframes fxRing {
+  0%   { box-shadow: 0 24px 70px rgba(0,0,0,.6), 0 0 0 1px rgba(var(--fx),.75), 0 0 26px rgba(var(--fx),.30); }
+  100% { box-shadow: 0 24px 70px rgba(0,0,0,.6), 0 0 0 1px rgba(var(--fx),0),   0 0 26px rgba(var(--fx),0); }
+}
+.fxchip {
+  position: fixed; z-index: 26; pointer-events: none;
+  transform: translate(-50%, -100%); margin-top: -10px;
+  font: 600 13px/1 var(--sans); letter-spacing: .04em; white-space: nowrap;
+  padding: 6px 11px; border-radius: 999px;
+  background: rgba(29,24,21,.94); border: 1px solid currentColor;
+  animation: fxChip 1.2s cubic-bezier(.22,1,.36,1) forwards;
+}
+.fxchip.good { color: var(--green); }
+.fxchip.mid  { color: var(--amber); }
+.fxchip.bad  { color: var(--clay); }
+.fxchip.lit  { color: var(--amber); }
+@keyframes fxChip {
+  0%   { opacity: 0; transform: translate(-50%, -80%); }
+  18%  { opacity: 1; transform: translate(-50%, -100%); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -150%); }
+}
+/* 一轮里换词：内容轻轻滑进来 */
+#card.swap .meta, #card.swap .word, #card.swap .ipa { animation: swapIn .32s cubic-bezier(.22,1,.36,1); }
+@keyframes swapIn { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  #card[class*="fx-"], .fxchip, #card.swap .meta, #card.swap .word, #card.swap .ipa { animation-duration: .01s; }
+}
+
 #say { background: none; border: 1px solid var(--line); border-radius: 5px; color: var(--dim); cursor: pointer; font-size: 11px; padding: 1px 6px; line-height: 1.5; }
 #say:hover { border-color: var(--blue); color: var(--blue); }
 #say.off { opacity: .35; cursor: not-allowed; }
@@ -227,6 +262,7 @@ textarea { resize: vertical; margin-top: 8px; line-height: 1.5; }
 .row label { color: var(--dim); font-size: 12.5px; min-width: 7em; }
 .row input[type=number] { width: 110px; }
 .row input[type=range] { flex: 1; accent-color: var(--amber); }
+.row .vn { width: 3em; text-align: right; color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
 
 #alist { list-style: none; margin-top: 8px; }
 #alist li { display: flex; align-items: baseline; gap: 10px; padding: 7px 10px; border-radius: 7px; cursor: pointer; }

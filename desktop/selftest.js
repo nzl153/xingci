@@ -66,6 +66,13 @@ module.exports = async function run() {
     const toast = await M(`$('toast') && $('toast').textContent`);
     ok('卡片评分有提示', /L1 → L2/.test(String(toast)), toast);
 
+    // 一轮里评分：响一声、卡片亮一圈、上方飘等级变化
+    const fxr = await M(`stop(); peek(${q}); $('card').classList.remove('solo'); reveal(); grade(0);
+      [document.querySelector('.fxchip') && document.querySelector('.fxchip').textContent,
+       $('card').classList.contains('fx-bad'), XC.sfx('good', 0.3), XC.sfx('good', 0)]`);
+    ok('卡片评分有音效和动效', fxr.join() === '归零,true,true,false', fxr);
+    await M(`stop()`);
+
     await M(`stop(); toggleView()`);
     await wait(1800);
     const tv = await M(`[Sky.viewName(), S.view, JSON.parse(store.get(KEY)).view]`);
@@ -99,6 +106,14 @@ module.exports = async function run() {
       cyc.push(await F(`$('iv').textContent`));
     }
     ok('间隔按钮循环', cyc.join() === '3m,15s,30s,1m', cyc);
+
+    const vols = [];
+    for (let i = 0; i < 4; i++) {
+      await F(`$('vol').click()`);
+      await wait(200);
+      vols.push(await F(`[volume, $('volN').textContent].join(':')`));
+    }
+    ok('浮窗音量按钮循环并记住', vols.join() === '1:100,0.25:25,0.5:50,0.75:75', vols);
     await F(`for (const id of ['ctl', 'grade']) { $(id).style.opacity = 1; $(id).style.transform = 'none'; }`);
     await wait(300);
     await snap(float, 'float-ctl');

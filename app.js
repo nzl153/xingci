@@ -53,7 +53,7 @@ const bookOf = id => BOOKS.find(b => b.id === id) || BOOKS[0];
 /* ---------------- 存档 ---------------- */
 
 function blank() {
-  return { v: 1, sky: [], prog: {}, book: BOOKS[0].id, newN: 2, today: null, accent: 'us' };
+  return { v: 1, sky: [], prog: {}, book: BOOKS[0].id, newN: 2, today: null, accent: 'us', vol: 1, sfx: 0.5 };
 }
 const store = XC.store;
 
@@ -227,6 +227,12 @@ function show(w, isNew) {
   renderEx(w);
   renderFam(w);
   XC.prefetch(w, S.accent);
+  // 一轮里接着换词时，新词轻轻滑进来，不是一下子跳过去
+  if (card.classList.contains('on')) {
+    card.classList.remove('swap');
+    void card.offsetWidth;
+    card.classList.add('swap');
+  }
   card.classList.remove('reveal', 'wrap', 'isnew', 'solo');
   card.classList.toggle('isnew', isNew);
   if (revealed) card.classList.add('reveal');
@@ -297,8 +303,33 @@ function grade(g) {
   const w = cur.w;
   const lv0 = lvOf(w);
   touch(w, g);
+  XC.sfx(['bad', 'mid', 'good'][g], S.sfx);
   if ($('card').classList.contains('solo')) toast(gradeMsg(w, lv0));
+  else fx(g, lvShift(w, lv0));
   after(w, g);
+}
+
+function lvShift(w, lv0) {
+  const lv = lvOf(w);
+  return lv > lv0 ? `L${lv0} → L${lv}` : lv < lv0 ? '归零' : `L${lv}`;
+}
+
+/* 评分反馈：卡片边上亮一圈评分的颜色，上方飘一个等级变化，换下一个词时内容轻轻滑进来 */
+const FX = { 2: 'good', 1: 'mid', 0: 'bad', '-1': 'lit' };
+function fx(g, label) {
+  const card = $('card');
+  card.classList.remove('fx-good', 'fx-mid', 'fx-bad', 'fx-lit');
+  void card.offsetWidth;
+  card.classList.add('fx-' + FX[g]);
+  if (!label) return;
+  const r = card.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'fxchip ' + FX[g];
+  el.textContent = label;
+  el.style.left = r.left + r.width / 2 + 'px';
+  el.style.top = r.top + 'px';
+  el.addEventListener('animationend', () => el.remove());
+  document.body.appendChild(el);
 }
 
 function gradeMsg(w, lv0) {
@@ -313,6 +344,8 @@ function lightCur(knew) {
   light([w], knew ? 3 : 0);
   if (!knew) S.prog[w] = { lv: 0, n: 1, bad: 0, last: Date.now() };
   else S.prog[w].last = Date.now();
+  XC.sfx('light', S.sfx);
+  fx(-1, knew ? '早就认识 · L3' : '点亮了');
   Sky.focus(w);
   after(w, knew ? 2 : -1);
 }
@@ -335,6 +368,8 @@ function markKnown() {
   Object.assign(p, { lv: 5, known: true, last: Date.now() });
   p.n++;
   S.prog[w] = p;
+  XC.sfx('good', S.sfx);
+  fx(2, '不再抽');
   after(w, 2);
 }
 
@@ -366,7 +401,7 @@ function stop() {
 /* ---------------- 发音 ---------------- */
 
 function say(w) {
-  XC.say(w, S.accent).then(ok => {
+  XC.say(w, S.accent, S.vol).then(ok => {
     if (!ok) toast(navigator.onLine ? '读不出来：有道那边没返回，系统里也没有英文语音。'
                                     : '没联网，系统里也没有英文语音，读不出来。');
   });
@@ -552,6 +587,8 @@ function hidePop() { $('pop').classList.remove('on'); popW = null; }
 
 function renderSet() {
   $('sAccent').value = S.accent;
+  setVol('sVol', S.vol);
+  setVol('sSfx', S.sfx);
   $('sAbout').innerHTML =
     `星词 v${XC.VERSION} · 词典 ${ROWS.length.toLocaleString()} 词，来自 <a href="https://github.com/skywind3000/ECDICT" target="_blank" rel="noopener">ECDICT</a>（MIT）。` +
     (saveFail ? '<br><b class="warn">⚠ 最近一次保存失败了：浏览器存储可能被禁用或已满，记得导出备份。</b>' : '');
@@ -742,6 +779,15 @@ $('sFile').onchange = async () => {
   $('sFile').value = '';
 };
 $('sAccent').onchange = () => { S.accent = $('sAccent').value; save(); say(cur ? cur.w : 'star'); };
+function setVol(id, v) {
+  $(id).value = Math.round(v * 100);
+  $(id + 'N').textContent = v ? Math.round(v * 100) + '%' : '关';
+}
+// 拖的时候只改数字，松手再试听一下，不然拖一路响一路
+$('sVol').oninput = () => { S.vol = $('sVol').value / 100; setVol('sVol', S.vol); };
+$('sVol').onchange = () => { save(); say(cur ? cur.w : 'star'); };
+$('sSfx').oninput = () => { S.sfx = $('sSfx').value / 100; setVol('sSfx', S.sfx); };
+$('sSfx').onchange = () => { save(); XC.sfx('good', S.sfx); };
 
 $('sReset').onclick = () => {
   const b = $('sReset');

@@ -13,7 +13,7 @@ const HKEY = 'xingci.float.hist';
 const MEANING_DELAY = 4000;
 const LEAVE = 180;
 
-let interval = 60, on = true, autoSay = false;
+let interval = 60, on = true, autoSay = false, volume = 0.75;
 let hist = [];
 try { hist = JSON.parse(XC.store.get(HKEY)) || []; } catch { hist = []; }
 let pos = hist.length - 1;
@@ -26,6 +26,9 @@ function state() {
   try { return JSON.parse(XC.store.get('xingci.v1')); } catch { return null; }
 }
 const accent = () => { const S = state(); return (S && S.accent) || 'us'; };
+const say = w => XC.say(w, accent(), volume);
+// 评分音效：主窗口设置里的音效大小，再乘上胶囊自己的音量
+const sfx = kind => { const S = state(); XC.sfx(kind, (S && S.sfx != null ? S.sfx : 0.5) * volume); };
 
 function pick() {
   const S = state();
@@ -87,7 +90,7 @@ function render(isNew) {
   }
   if (isNew) {
     meanT = setTimeout(showMeaning, MEANING_DELAY + LEAVE);
-    if (autoSay) XC.say(w, accent());
+    if (autoSay) say(w);
   }
 }
 $('cap').addEventListener('transitionend', e => {
@@ -116,6 +119,11 @@ function grade(g) {
   const lv0 = levelOf(w) || 0;
   graded.set(at, { g, msg: '…' });
   api.grade(w, g);
+  sfx(g === 2 ? 'good' : 'bad');
+  const star = $('star');
+  star.classList.remove('pop', 'sink');
+  void star.offsetWidth;
+  star.classList.add(g === 2 ? 'pop' : 'sink');
   showMeaning();
   gradeUI();
   // 主窗口存完再读回来，确认真的记上了
@@ -158,6 +166,8 @@ api.onCfg(c => {
   $('auto').classList.toggle('is-on', autoSay);
   $('auto').title = autoSay ? '自动朗读已开：点一下关掉' : '自动朗读已关：点一下打开，每弹一个词读一遍';
   $('iv').textContent = ivLabel(interval);
+  volume = c.volume;
+  volUI();
   if (on && !wasOn) fresh();
   wasOn = on;
   schedule();
@@ -208,9 +218,31 @@ $('next').onclick = () => {
 $('off').onclick = () => api.off();
 $('good').onclick = () => grade(2);
 $('bad').onclick = () => grade(0);
-$('say').onclick = () => { if (hist[pos]) XC.say(hist[pos], accent()); };
+$('say').onclick = () => { if (hist[pos]) say(hist[pos]); };
 $('auto').onclick = () => {
   api.autoSay(!autoSay);
-  if (!autoSay && hist[pos]) XC.say(hist[pos], accent());    // 刚打开时读一下当前这个，确认有声音
+  if (!autoSay && hist[pos]) say(hist[pos]);    // 刚打开时读一下当前这个，确认有声音
 };
+
+/* 音量：点一下循环四档，滚轮也能调；换档时响一声，听得出多大 */
+const VOLS = [0.25, 0.5, 0.75, 1];
+function volUI() {
+  const i = VOLS.indexOf(volume);
+  $('vol').dataset.lv = i < 0 ? 2 : i;
+  $('volN').textContent = Math.round(volume * 100);
+  $('vol').title = `浮窗音量 ${Math.round(volume * 100)}%：点一下换档，也可以滚轮`;
+}
+function setVolume(v) {
+  volume = v;
+  volUI();
+  api.volume(v);
+  XC.sfx('mid', v);
+}
+$('vol').onclick = () => setVolume(VOLS[(VOLS.indexOf(volume) + 1) % VOLS.length]);
+$('vol').addEventListener('wheel', e => {
+  e.preventDefault();
+  const i = Math.max(0, VOLS.indexOf(volume));
+  const j = Math.max(0, Math.min(VOLS.length - 1, i + (e.deltaY < 0 ? 1 : -1)));
+  if (j !== i) setVolume(VOLS[j]);
+}, { passive: false });
 $('iv').onclick = () => api.interval(IVS[(IVS.indexOf(interval) + 1) % IVS.length]);

@@ -22,7 +22,7 @@ const selftest = process.env.XINGCI_SELFTEST ? require('./selftest') : null;
 /* ---------- 设置（浮窗位置、间隔、开关） ---------- */
 
 const CFG = () => path.join(app.getPath('userData'), 'desktop.json');
-let cfg = { interval: 60, floatOn: true, afkPause: true, autoSay: false, x: null, y: null };
+let cfg = { interval: 60, floatOn: true, afkPause: true, autoSay: false, volume: 0.75, x: null, y: null };
 try { cfg = { ...cfg, ...JSON.parse(fs.readFileSync(CFG(), 'utf8')) }; } catch { /* 第一次启动 */ }
 function saveCfg() {
   try { fs.writeFileSync(CFG(), JSON.stringify(cfg)); } catch { /* 写不了就算了，下次用默认值 */ }
@@ -195,7 +195,7 @@ function pauseFor(min) {
 }
 
 function sendCfg() {
-  if (float) float.webContents.send('cfg', { interval: cfg.interval, on: floatOn(), autoSay: cfg.autoSay });
+  if (float) float.webContents.send('cfg', { interval: cfg.interval, on: floatOn(), autoSay: cfg.autoSay, volume: cfg.volume });
 }
 
 function applyFloat() {
@@ -231,6 +231,7 @@ ipcMain.on('float:away', e => {
 });
 ipcMain.on('float:interval', (_e, s) => { cfg.interval = s; saveCfg(); sendCfg(); buildMenu(); });
 ipcMain.on('float:autosay', (_e, v) => { cfg.autoSay = !!v; saveCfg(); sendCfg(); buildMenu(); });
+ipcMain.on('float:volume', (_e, v) => { cfg.volume = Math.max(0, Math.min(1, +v || 0)); saveCfg(); sendCfg(); buildMenu(); });
 
 /* ---------- 托盘 ---------- */
 
@@ -238,6 +239,10 @@ function buildMenu() {
   const iv = (s, label) => ({
     label, type: 'radio', checked: cfg.interval === s,
     click: () => { cfg.interval = s; saveCfg(); sendCfg(); },
+  });
+  const vol = v => ({
+    label: v * 100 + '%', type: 'radio', checked: cfg.volume === v,
+    click: () => { cfg.volume = v; saveCfg(); sendCfg(); },
   });
   const login = app.getLoginItemSettings().openAtLogin;
   tray.setContextMenu(Menu.buildFromTemplate([
@@ -260,6 +265,7 @@ function buildMenu() {
     } },
     { label: '弹词时自动读一遍', type: 'checkbox', checked: cfg.autoSay,
       click: m => { cfg.autoSay = m.checked; saveCfg(); sendCfg(); } },
+    { label: '浮窗音量', submenu: [vol(0.25), vol(0.5), vol(0.75), vol(1)] },
     { label: '离开电脑时不换词', type: 'checkbox', checked: cfg.afkPause,
       click: m => { cfg.afkPause = m.checked; saveCfg(); } },
     { type: 'separator' },
