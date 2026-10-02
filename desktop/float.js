@@ -35,7 +35,9 @@ function pick() {
   const S = state();
   if (!S || !S.sky || !S.sky.length) return null;
   const recent = new Set(hist.slice(-15));
-  return XC.pick(S.sky, S.prog, w => recent.has(w) || !IDX.has(w));
+  return XC.pick(S.sky, S.prog, w => recent.has(w) || !IDX.has(w)) ||
+         XC.pick(S.sky, S.prog, w => w === hist[pos] || !IDX.has(w)) ||
+         XC.pick(S.sky, S.prog, w => !IDX.has(w));
 }
 
 /* 星星颜色跟熟练度走：忘了偏暗蓝，没测过浅蓝，L1 起从米白一路暖到金 */

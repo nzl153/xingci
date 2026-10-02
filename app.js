@@ -477,7 +477,7 @@ function renderAdd() {
 }
 function addWord(w) {
   if (!w) return;
-  if (light([w], 0)) { Sky.focus(w, 1.6); Sky.setBright(w, bright(w), 1.4); toast(`点亮了 ${w}`); }
+  if (light([w], 0)) { save(); Sky.focus(w, 1.6); Sky.setBright(w, bright(w), 1.4); toast(`点亮了 ${w}`); }
   else Sky.focus(w, 1.6);
   renderAdd();
 }
@@ -788,7 +788,7 @@ $('sFile').onchange = async () => {
   if (!f) return;
   try {
     const d = JSON.parse(await f.text());
-    if (d.app !== 'xingci' || !Array.isArray(d.sky)) throw new Error('不是星词的备份文件');
+    if (d.app !== 'xingci' || !Array.isArray(d.sky) || ('texts' in d && !Array.isArray(d.texts))) throw new Error('不是星词的备份文件');
     const texts = d.texts || [];
     const log = d.log && Array.isArray(d.log.ev) ? d.log : null;
     delete d.app; delete d.texts; delete d.log;
